@@ -42,7 +42,7 @@ I didn't bother buying a micro-HDMI connector for this, since all I needed was s
 1. Copy [*wpa_supplicant.conf*](https://learn.adafruit.com/pages/9244/elements/2827363/download) to the root folder of the SD card
 1. Modify the file with your SSID and WIFI Password
 
-Walkthru: https://learn.adafruit.com/raspberry-pi-zero-creation/text-file-editing#configure-wifi-2827362-3
+*Walkthru: https://learn.adafruit.com/raspberry-pi-zero-creation/text-file-editing#configure-wifi-2827362-3*
 
 ### 3. Enable SSH
 
@@ -61,7 +61,10 @@ Plug in a micro-sd power connection to turn the Pi on.  I've read that powering 
 Once the Pi has been given 30 seconds or so to boot up, connect to it using SSH.  There are lots of options for SSH clients, the most popular likley being [PuTTY](https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html).
 
 #### Steps
-1. Determine IP address given to your Pi on your wireless network.  Read the wireless router documentation to find out where this is located.  Here is the listing on a ASUS router:![Router IP Address](./images/router_pi_ip.png)
+1. Determine IP address given to your Pi on your wireless network.  Read the wireless router documentation to find out where this is located.  Here is the listing on a ASUS router:
+
+![Router IP Address](./images/router_pi_ip.png)
+
 1. Connect to pi@PI-IP-ADDRESS (e.g. pi<span>@</spaN>192.168.1.75)
 1. The default password upon the first boot is `raspberry`
 
@@ -70,35 +73,35 @@ Once the Pi has been given 30 seconds or so to boot up, connect to it using SSH.
 Now the OS needs to be updated, python needs to be installed, and the interface that communucates with the display requires enabling.
 
 #### Steps
-1. Update OS and install python3, walkthru here: https://learn.adafruit.com/circuitpython-on-raspberrypi-linux/installing-circuitpython-on-raspberry-pi#update-your-pi-and-python-2993452-4
-1. There are quite a few commands for this setup, walkthru here: https://learn.adafruit.com/adafruits-raspberry-pi-lesson-4-gpio-setup/configuring-i2c 
+1. Update OS and install python3,*walkthru here: https://learn.adafruit.com/circuitpython-on-raspberrypi-linux/installing-circuitpython-on-raspberry-pi#update-your-pi-and-python-2993452-4*
+1. There are quite a few commands for this setup, *walkthru here: https://learn.adafruit.com/adafruits-raspberry-pi-lesson-4-gpio-setup/configuring-i2c*
 
-Walkthru: https://learn.adafruit.com/circuitpython-on-raspberrypi-linux/installing-circuitpython-on-raspberry-pi
+*Walkthru: https://learn.adafruit.com/circuitpython-on-raspberrypi-linux/installing-circuitpython-on-raspberry-pi*
 
 * * *
 ## Wiring display to Pi
 
-1. The I2C backpack for the 7-segment display requires soldering to assemble.  Walkthru: https://learn.adafruit.com/adafruit-led-backpack/1-2-inch-7-segment-backpack-assembly
-1. Five wires are required to connect the 7-segment display to the Raspberry Pi.  Walkthru: https://learn.adafruit.com/adafruit-led-backpack/python-wiring-and-setup-d74df15e-c55c-487a-acce-a905497ef9db
+1. The I2C backpack for the 7-segment display requires soldering to assemble.  *Walkthru: https://learn.adafruit.com/adafruit-led-backpack/1-2-inch-7-segment-backpack-assembly*
+1. Five wires are required to connect the 7-segment display to the Raspberry Pi.  *Walkthru: https://learn.adafruit.com/adafruit-led-backpack/python-wiring-and-setup-d74df15e-c55c-487a-acce-a905497ef9db*
 
 While testing, connect the Pi and the display via the breadboard.
 
-TODO: Picture of breadboard setup
+![Pi Zero connected to I2C backpack via breadboard](./images/breadboard.jpg)
 
 For a more permanent setup, use the jumper cable connected to the correct terminals on the Pi.  The terminals are a 3V, 5V, SDC, SCL, and GND.
 
-TODO: Picture with jumper cable
+![Pi Zero connected to I2C backpack via jumper](./images/jumpers.jpg)
 * * * *
 ## Configuration of Alexa Gadget
 
 For the Pi to get timer events from the Echo, it will need to be added as a gadget via Bluetooth.
 
 #### Steps
-1. Register the Pi as a gadget.  Walkthru: https://github.com/alexa/Alexa-Gadgets-Raspberry-Pi-Samples#registering-a-gadget-in-the-alexa-voice-service-developer-console
+1. Register the Pi as a gadget.  *Walkthru: https://github.com/alexa/Alexa-Gadgets-Raspberry-Pi-Samples#registering-a-gadget-in-the-alexa-voice-service-developer-console*
 1. Put the gadget id and password in the `timer.ini` file
-1. Clone/download Pi samples from github repo.  Run `python3 launch.py --setup`.  This script will install the Bluetooth dependencies. https://github.com/alexa/Alexa-Gadgets-Raspberry-Pi-Samples#installation
+1. Clone/download Pi samples from github repo.  Run `python3 launch.py --setup`.  This script will install the Bluetooth dependencies. *Walkthru: https://github.com/alexa/Alexa-Gadgets-Raspberry-Pi-Samples#installation*
 
-Walkthru: https://github.com/alexa/Alexa-Gadgets-Raspberry-Pi-Samples#prerequisites
+*Walkthru: https://github.com/alexa/Alexa-Gadgets-Raspberry-Pi-Samples#prerequisites*
 * * * *
 ## Code details
 
@@ -208,3 +211,7 @@ Finally, once the timer is expired or cancelled, the code will simply clear the 
 # the timer was cancelled, clear display
 display.fill(0)
 ```
+* * * *
+
+# [Demo](./images/demo.mov)
+Quick video utilizing speech on a iPhone.
