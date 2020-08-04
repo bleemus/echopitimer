@@ -213,5 +213,5 @@ display.fill(0)
 ```
 * * * *
 
-# [Demo](./images/demo.mov)
+# [Demo](https://youtu.be/GQmf6-iRnAk)
 Quick video utilizing speech on a iPhone.
