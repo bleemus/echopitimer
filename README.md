@@ -1,3 +1,5 @@
+# DEPRECATED -- Amazon nuked the [gadgets integration](https://developer.amazon.com/en-US/alexa/devices/connected-devices/development-resources/alexa-gadgets), so this won't work anymore. :~(
+
 # echopitimer
 Raspberry Pi Timer for Echo implementation for 7-segment display
 
