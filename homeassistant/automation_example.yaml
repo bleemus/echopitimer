@@ -1,0 +1,83 @@
+# Home Assistant Automation for EchoPi Timer
+#
+# This automation forwards Alexa Media Player timer events to the MQTT topic
+# that the Raspberry Pi timer display listens to.
+#
+# Prerequisites:
+# 1. Alexa Media Player integration installed and configured
+#    https://github.com/alandtse/alexa_media_player
+# 2. MQTT integration configured with a broker
+#    https://www.home-assistant.io/integrations/mqtt/
+#
+# Installation:
+# 1. Copy this file content to your Home Assistant automations.yaml file
+#    or create it via the UI (Settings -> Automations & Scenes -> Create Automation)
+# 2. Replace 'media_player.YOUR_ECHO_DEVICE' with your actual Echo device entity ID
+# 3. Adjust the MQTT topic if you changed it in timer.ini
+# 4. Reload automations or restart Home Assistant
+
+automation:
+  # Automation 1: Timer Set or Updated
+  - id: echopitimer_timer_set
+    alias: "EchoPi Timer - Set or Update"
+    description: "Send timer information to MQTT when a timer is set or updated on Echo"
+    
+    trigger:
+      # Trigger when the next_timer attribute changes on your Echo device
+      - platform: state
+        entity_id: media_player.YOUR_ECHO_DEVICE
+        attribute: next_timer
+    
+    condition:
+      # Only trigger if there's actually a timer (next_timer is not empty)
+      - condition: template
+        value_template: "{{ trigger.to_state.attributes.next_timer is not none }}"
+    
+    action:
+      # Calculate the end time as a Unix timestamp
+      # Note: This automation may occasionally send 'update' for the same timer
+      # when the Alexa Media Player integration re-detects it during polling.
+      # The timer.py code handles this gracefully by updating the end time.
+      - service: mqtt.publish
+        data:
+          topic: echopitimer/timer
+          payload: >
+            {
+              "action": "{{ 'update' if trigger.from_state.attributes.next_timer is not none else 'set' }}",
+              "end_time": {{ as_timestamp(trigger.to_state.attributes.next_timer) | int }}
+            }
+    
+    mode: single
+
+  # Automation 2: Timer Cancelled
+  - id: echopitimer_timer_cancel
+    alias: "EchoPi Timer - Cancel"
+    description: "Send cancel message to MQTT when timer is cancelled on Echo"
+    
+    trigger:
+      # Trigger when the next_timer attribute changes to empty/none
+      - platform: state
+        entity_id: media_player.YOUR_ECHO_DEVICE
+        attribute: next_timer
+    
+    condition:
+      # Only trigger if timer was cleared (from something to nothing)
+      - condition: template
+        value_template: "{{ trigger.from_state.attributes.next_timer is not none and trigger.to_state.attributes.next_timer is none }}"
+    
+    action:
+      - service: mqtt.publish
+        data:
+          topic: echopitimer/timer
+          payload: '{"action": "cancel"}'
+    
+    mode: single
+
+# Notes:
+# - Replace 'YOUR_ECHO_DEVICE' with your actual Echo device entity ID (e.g., 'kitchen_echo')
+# - You can find your Echo device entity IDs in: Developer Tools -> States, 
+#   look for entities starting with 'media_player.'
+# - The MQTT topic 'echopitimer/timer' should match what's configured in your timer.ini file
+# - If you have multiple Echo devices, you can duplicate these automations for each one
+# - The Alexa Media Player integration polls for timer updates, so there may be a slight
+#   delay (typically a few seconds) between setting a timer and it appearing on the display

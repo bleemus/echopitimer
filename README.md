@@ -1,5 +1,3 @@
-# DEPRECATED -- Amazon nuked the [gadgets integration](https://developer.amazon.com/en-US/alexa/devices/connected-devices/development-resources/alexa-gadgets), so this won't work anymore. :~(
-
 # echopitimer
 Raspberry Pi Timer for Echo implementation for 7-segment display
 
@@ -10,6 +8,31 @@ This is the most prevalent when using timers in the kitchen, which our family us
 
 While I know that there are Echo devices with screens, I didn't need any of the other functionality, and thought it a good opportunity to tinker with hardware to come up with a custom solution.
 
+# Architecture
+
+This project uses Home Assistant with the Alexa Media Player integration to detect timer events from your Echo devices, then forwards them via MQTT to a Raspberry Pi Zero W that displays the countdown on a 7-segment display:
+
+```
+"Alexa, set a 10 minute timer"
+        │
+        ▼
+   Echo Device
+        │
+        ▼ (detected via Alexa Media Player integration)
+Home Assistant
+        │
+        ▼ (MQTT publish)
+   Raspberry Pi Zero W
+        │
+        ▼
+  7-Segment Display
+```
+
+**Important Notes:**
+
+- You'll need a separate device to run Home Assistant (Raspberry Pi 3/4, old laptop, NAS, etc.) as the Pi Zero W is too underpowered for running Home Assistant.
+- The Alexa Media Player integration is a community-maintained project and is not officially supported by Amazon.
+
 # Hardware used
 1. [Raspberry Pi Zero W with installed headers](https://www.raspberrypi.org/pi-zero-w/)
 1. MicroSD card with USB Reader
@@ -18,6 +41,7 @@ While I know that there are Echo devices with screens, I didn't need any of the 
     * *(optional, for prototyping)* [T expansion board with 40-pin ribbon cable](https://www.adafruit.com/product/2028) and [breadboard](https://www.adafruit.com/product/239)
     * [Jumper cables](https://www.adafruit.com/product/794)
 1. [Echo dot or whatever flavor](https://www.amazon.com/echo)
+1. A separate device to run Home Assistant (Raspberry Pi 3/4, old laptop, NAS, etc.)
 
 # Installation/configuration
 These guides below have all of the information that you need to assemble this project; I will inject a bit of color commentary of my experience and some pictures.
@@ -94,22 +118,172 @@ For a more permanent setup, use the jumper cable connected to the correct termin
 
 ![Pi Zero connected to I2C backpack via jumper](./images/jumpers.jpg)
 * * * *
-## Configuration of Alexa Gadget
+## Home Assistant Setup
 
-For the Pi to get timer events from the Echo, it will need to be added as a gadget via Bluetooth.
+Home Assistant is needed to detect timer events from your Echo devices and forward them to the Pi via MQTT.
+
+### 1. Install Home Assistant
+
+Home Assistant should run on a separate device (not the Pi Zero W). Options include:
+- Raspberry Pi 3 or 4 with Home Assistant OS
+- Old laptop or desktop with Home Assistant in Docker
+- NAS device (many support Docker)
+- Virtual machine
+
+*Installation guide: https://www.home-assistant.io/installation/*
+
+### 2. Install Alexa Media Player Integration
+
+The Alexa Media Player custom integration allows Home Assistant to monitor your Echo devices, including timer states.
+
+**Note:** This is a community-maintained integration and is not officially supported by Amazon.
 
 #### Steps
-1. Register the Pi as a gadget.  *Walkthru: https://github.com/alexa/Alexa-Gadgets-Raspberry-Pi-Samples#registering-a-gadget-in-the-alexa-voice-service-developer-console*
-1. Put the gadget id and password in the `timer.ini` file
-1. Clone/download Pi samples from github repo.  Run `python3 launch.py --setup`.  This script will install the Bluetooth dependencies. *Walkthru: https://github.com/alexa/Alexa-Gadgets-Raspberry-Pi-Samples#installation*
+1. Install HACS (Home Assistant Community Store) if not already installed: https://hacs.xyz/docs/setup/download
+1. In Home Assistant, go to HACS -> Integrations
+1. Search for "Alexa Media Player" and install it
+1. Restart Home Assistant
+1. Go to Settings -> Devices & Services -> Add Integration
+1. Search for "Alexa Media Player"
+1. Log in with your Amazon account credentials
+1. Your Echo devices should now appear as media player entities
 
-*Walkthru: https://github.com/alexa/Alexa-Gadgets-Raspberry-Pi-Samples#prerequisites*
+*Full documentation: https://github.com/alandtse/alexa_media_player/wiki*
+
+### 3. Install and Configure MQTT Broker
+
+MQTT is used to send timer events from Home Assistant to your Raspberry Pi.
+
+#### Option A: Mosquitto Add-on (Recommended for Home Assistant OS)
+1. In Home Assistant, go to Settings -> Add-ons -> Add-on Store
+1. Search for "Mosquitto broker" and install it
+1. Start the add-on and enable "Start on boot"
+1. Go to Settings -> Devices & Services -> Add Integration
+1. Search for "MQTT" and configure it to use localhost
+
+#### Option B: External Mosquitto Broker
+If running Home Assistant in Docker or on a different machine:
+1. Install Mosquitto on your server: `apt-get install mosquitto mosquitto-clients`
+1. Configure Mosquitto (basic setup usually works out of the box)
+1. In Home Assistant: Settings -> Devices & Services -> Add Integration -> MQTT
+1. Enter your Mosquitto broker's hostname/IP and port (default: 1883)
+
+*MQTT integration docs: https://www.home-assistant.io/integrations/mqtt/*
+
+### 4. Create Home Assistant Automation
+
+The automation detects timer changes on your Echo and publishes them to MQTT.
+
+#### Steps
+1. Copy the contents of `homeassistant/automation_example.yaml` from this repository
+1. In Home Assistant, go to Settings -> Automations & Scenes
+1. Click "Create Automation" -> "Create new automation" -> "Edit in YAML"
+1. Paste the automation code
+1. Replace `media_player.YOUR_ECHO_DEVICE` with your actual Echo device entity ID
+   - Find your Echo device entity ID in Developer Tools -> States
+   - Look for entities starting with `media_player.`
+1. Adjust the MQTT topic if you changed it in `timer.ini` (default: `echopitimer/timer`)
+1. Save the automation
+
+* * * *
+## Raspberry Pi Configuration
+
+### 1. Install Python Dependencies
+
+SSH into your Raspberry Pi and install the required Python packages:
+
+```bash
+cd /path/to/echopitimer
+pip3 install -r requirements.txt
+```
+
+### 2. Configure timer.ini
+
+Edit the `timer.ini` file to point to your MQTT broker:
+
+```ini
+[MQTTSettings]
+broker_host = YOUR_HOME_ASSISTANT_IP
+broker_port = 1883
+topic = echopitimer/timer
+```
+
+If you configured MQTT authentication, also add:
+```ini
+username = your_mqtt_username
+password = your_mqtt_password
+```
+
+### 3. Run the Timer Display
+
+```bash
+python3 timer.py
+```
+
+The script will connect to your MQTT broker and start listening for timer events. Try saying "Alexa, set a timer for 5 minutes" and you should see the countdown on the display!
+
+### 4. (Optional) Run on Startup
+
+To have the timer display start automatically when the Pi boots:
+
+1. Create a systemd service file:
+```bash
+sudo nano /etc/systemd/system/echopitimer.service
+```
+
+2. Add the following content (adjust paths as needed):
+```ini
+[Unit]
+Description=EchoPi Timer Display
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/echopitimer
+ExecStart=/usr/bin/python3 /home/pi/echopitimer/timer.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+3. Enable and start the service:
+```bash
+sudo systemctl enable echopitimer.service
+sudo systemctl start echopitimer.service
+```
+
 * * * *
 ## Code details
 
-I customized the timer Gadget example for this program.  Major modifications:
+The timer display code has been updated to work with MQTT instead of the deprecated Alexa Gadgets API, but the core display logic remains the same.
 
-### [python libraries for display and instantiate display variable](https://github.com/bleemus/echopitimer/blob/d24081593529ebe77a513b9c23a7c94c7b58b84e/timer.py#L20)
+### Architecture Overview
+
+The `TimerDisplay` class subscribes to an MQTT topic and listens for JSON messages with timer actions:
+- `{"action": "set", "end_time": <unix_timestamp>}` — Start a new timer countdown
+- `{"action": "update", "end_time": <unix_timestamp>}` — Update a running timer's end time
+- `{"action": "cancel"}` — Cancel the current timer and clear the display
+
+### [MQTT Connection and Message Handling](https://github.com/bleemus/echopitimer/blob/main/timer.py#L29)
+```py
+def __init__(self, config_file='timer.ini'):
+    # Load configuration
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    
+    self.broker_host = config.get('MQTTSettings', 'broker_host', fallback='localhost')
+    self.broker_port = config.getint('MQTTSettings', 'broker_port', fallback=1883)
+    self.topic = config.get('MQTTSettings', 'topic', fallback='echopitimer/timer')
+    
+    # Initialize MQTT client
+    self.client = mqtt.Client()
+    self.client.on_connect = self._on_connect
+    self.client.on_message = self._on_message
+```
+
+### [Display Initialization (Unchanged)](https://github.com/bleemus/echopitimer/blob/main/timer.py#L13)
 ```py
 ### Adafruit HT16K33 backpack with 1.2 inch 7x4 segment display initialization
 import board
@@ -120,9 +294,9 @@ i2c = busio.I2C(board.SCL, board.SDA)
 display = segments.BigSeg7x4(i2c)
 ```
 
-### [Determine when to update display](https://github.com/bleemus/echopitimer/blob/d24081593529ebe77a513b9c23a7c94c7b58b84e/timer.py#L98)
+### [Determine when to update display (Unchanged)](https://github.com/bleemus/echopitimer/blob/main/timer.py#L138)
 
-The example already does a good job at calculating how many seconds are remaining, entering into a loop as long as there is a time active.  The code stores the value of the amount of seconds left, only calling the display updating function when the amount of seconds remaining has changed.  
+The timer loop calculates how many seconds are remaining, entering into a loop as long as there is time remaining. The code stores the value of the amount of seconds left, only calling the display updating function when the amount of seconds remaining has changed.
 ```py
 cur_time = time_remaining
 ...
@@ -139,7 +313,7 @@ The code checks every 100ms to see if the amount of seconds has changed so we do
 time.sleep(0.1)
 ```
 
-### [Update display](https://github.com/bleemus/echopitimer/blob/d24081593529ebe77a513b9c23a7c94c7b58b84e/timer.py#L142)
+### [Update display (Unchanged)](https://github.com/bleemus/echopitimer/blob/main/timer.py#L180)
 
 When the amount of seconds is different, then the code will send the remaining seconds to cacluate for displaying.  If there is over an hour, the code will display the time as HH:MM and will flash the colon on the display to signify seconds have passed.   
 
@@ -165,7 +339,7 @@ Once there is less than 3600 seconds, it will shift to static colon with MM:SS c
     display.print(printme)
 ```
 
-### [Flash display when timer is done and clear display once cancelled](https://github.com/bleemus/echopitimer/blob/d24081593529ebe77a513b9c23a7c94c7b58b84e/timer.py#L112)
+### [Flash display when timer is done and clear display once cancelled (Unchanged)](https://github.com/bleemus/echopitimer/blob/main/timer.py#L149)
 
 The code will fill the entire display to catch as much attention as possible.
 
