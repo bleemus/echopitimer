@@ -35,6 +35,9 @@ automation:
     
     action:
       # Calculate the end time as a Unix timestamp
+      # Note: This automation may occasionally send 'update' for the same timer
+      # when the Alexa Media Player integration re-detects it during polling.
+      # The timer.py code handles this gracefully by updating the end time.
       - service: mqtt.publish
         data:
           topic: echopitimer/timer

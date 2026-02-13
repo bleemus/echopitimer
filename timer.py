@@ -38,7 +38,7 @@ class TimerDisplay:
         self.password = config.get('MQTTSettings', 'password', fallback=None)
         
         self.timer_thread = None
-        self.timer_active = False
+        self.timer_active = threading.Event()
         self.timer_end_time = None
         
         # Initialize MQTT client
@@ -99,7 +99,7 @@ class TimerDisplay:
         # Start a new timer
         logger.info(f"Starting timer. {int(end_time - time.time())} seconds remaining")
         self.timer_end_time = end_time
-        self.timer_active = True
+        self.timer_active.set()
         
         # Run timer in its own thread to prevent blocking MQTT client
         self.timer_thread = threading.Thread(target=self._run_timer)
@@ -112,7 +112,7 @@ class TimerDisplay:
             logger.error("Received 'update' action but no end_time provided")
             return
         
-        if self.timer_active:
+        if self.timer_active.is_set():
             logger.info(f"Updating timer. New end time: {int(end_time - time.time())} seconds remaining")
             self.timer_end_time = end_time
         else:
@@ -120,9 +120,9 @@ class TimerDisplay:
 
     def _handle_cancel_timer(self):
         """Handle 'cancel' action - cancel the current timer"""
-        if self.timer_active:
+        if self.timer_active.is_set():
             logger.info("Cancelling timer")
-            self.timer_active = False
+            self.timer_active.clear()
         else:
             logger.info("Received 'cancel' action but no timer is currently active. Ignoring")
 
@@ -135,7 +135,7 @@ class TimerDisplay:
         time_remaining = self.timer_end_time - start_time
         cur_time = time_remaining
 
-        while self.timer_active and time_remaining > 0:
+        while self.timer_active.is_set() and time_remaining > 0:
             time_total = self.timer_end_time - start_time
             time_remaining = max(0, self.timer_end_time - time.time())
 
@@ -147,7 +147,7 @@ class TimerDisplay:
             time.sleep(0.1)
 
         # the timer is expired now, pulse display until timer is cancelled
-        while self.timer_active:
+        while self.timer_active.is_set():
             # fill the entire display
             display.fill(1)
 
@@ -200,9 +200,9 @@ class TimerDisplay:
             self.client.loop_forever()
         except KeyboardInterrupt:
             logger.info("Shutting down...")
-            self.timer_active = False
+            self.timer_active.clear()
             if self.timer_thread and self.timer_thread.is_alive():
-                self.timer_thread.join(timeout=2)
+                self.timer_thread.join(timeout=5)
             self.client.disconnect()
         except Exception as e:
             logger.error(f"Error connecting to MQTT broker: {e}")

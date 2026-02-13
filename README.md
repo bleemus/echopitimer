@@ -28,7 +28,10 @@ Home Assistant
   7-Segment Display
 ```
 
-**Important:** You'll need a separate device to run Home Assistant (Raspberry Pi 3/4, old laptop, NAS, etc.) as the Pi Zero W is too underpowered. The Alexa Media Player integration is a community-maintained project and is not officially supported by Amazon.
+**Important Notes:**
+
+- You'll need a separate device to run Home Assistant (Raspberry Pi 3/4, old laptop, NAS, etc.) as the Pi Zero W is too underpowered for running Home Assistant.
+- The Alexa Media Player integration is a community-maintained project and is not officially supported by Amazon.
 
 # Hardware used
 1. [Raspberry Pi Zero W with installed headers](https://www.raspberrypi.org/pi-zero-w/)
